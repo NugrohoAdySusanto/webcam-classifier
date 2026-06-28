@@ -1,118 +1,90 @@
-# 👁️ AI Vision Classifier
+# 👁️ ICU (I-See-U)
 
-**AI Vision Classifier** adalah aplikasi berbasis web yang memungkinkan deteksi objek dan ekspresi wajah secara *real-time* langsung di browser. Aplikasi ini mengimplementasikan teknologi *Computer Vision* menggunakan TensorFlow.js, memberikan pengalaman deteksi instan tanpa perlu mengirim data video ke server (100% Client-Side Processing).
+**ICU** adalah aplikasi berbasis web cerdas yang memungkinkan deteksi objek secara *real-time* langsung di browser Anda. Aplikasi ini menggabungkan kekuatan dua model *Computer Vision* (TensorFlow.js) untuk memantau dan mengenali berbagai macam objek secara bersamaan, tanpa perlu mengirim aliran video ke server (100% Client-Side Processing).
 
 ---
 
 ## 🚀 Fitur Utama
 
-### 📦 Deteksi Objek (Object Detection)
-Menggunakan model **COCO-SSD** (Common Objects in Context - Single Shot MultiBox Detector) untuk mengenali hingga 90 kategori objek umum (contoh: orang, laptop, kursi, ponsel, dll).
+### 📦 Deteksi Objek Ganda (Dual-Model Inference)
+Aplikasi ini menjalankan dua model secara paralel untuk cakupan deteksi yang luas namun tetap spesifik:
+1. **Custom YOLOv8 Model**: Dilatih khusus menggunakan dataset spesifik untuk mengenali objek kustom pilihan Anda (seperti `laptop` dan `bottle-cup`) dengan akurasi yang lebih tinggi dan presisi batas yang tajam.
+2. **COCO-SSD Model**: Model umum ringan yang mengenali 80 kategori objek dasar (orang, ponsel pintar, mobil, dsb).
 
-### 😊 Deteksi Emosi (Emotion Recognition)
-Menggunakan **face-api.js** untuk mendeteksi wajah dan mengklasifikasikan ekspresi emosi menjadi 7 kategori:
-- Happy, Sad, Angry, Surprised, Fearful, Disgusted, Neutral.
+### ⚖️ Smart Overlap Filter (IoU)
+Sistem cerdas **Intersection over Union (IoU)** bekerja sebagai "wasit" ketika kedua model mendeteksi objek di area kotak yang sama. Sistem akan mengevaluasi *confidence score* (persentase keyakinan) dari masing-masing tebakan dan membuang tebakan yang lebih lemah, memastikan tidak ada dua kotak yang tumpang tindih untuk satu benda yang sama.
 
-### 🎯 Stable Detection (Lock-on)
-Fitur cerdas untuk menghindari *flickering* prediksi. Sistem akan melakukan "locking" jika satu objek atau emosi terdeteksi secara konsisten selama **≥ 3 detik**, kemudian menampilkan modal hasil scan yang stabil.
+### 🎯 3-Second Smart Popup (Lock-on)
+Aplikasi melacak benda apa yang paling dominan di layar (memiliki persentase paling tinggi). Jika suatu benda berhasil mempertahankan posisi tertingginya selama **3 detik berturut-turut**, sistem akan memunculkan notifikasi/popup konfirmasi elegan yang menyatakan kejelasan benda tersebut.
 
-### 🛠️ UI/UX Modern
-- **Real-time Canvas Overlay**: Bounding box dan label kepercayaan (%) digambar tepat di atas aliran video.
-- **Mode Switching**: Perpindahan instan antara mode Objek dan Emosi.
-- **Dark Theme**: Interface elegan menggunakan Tailwind CSS.
-- **Responsive Design**: Optimal untuk berbagai ukuran layar.
-
----
-
-## 🏗️ Arsitektur Sistem
-
-Aplikasi ini mengadopsi pola desain **MVC (Model-View-Controller)** untuk memisahkan logika AI, rendering, dan manajemen state.
-
-### Komponen MVC
-| Komponen | File | Tanggung Jawab |
-|-----------|------|----------------|
-| **Model** | `src/mvc/model.ts` | Inisialisasi TensorFlow.js, memuat model COCO-SSD & face-api dari CDN, serta menjalankan fungsi inferensi AI. |
-| **View** | `src/mvc/view.ts` | Manipulasi DOM Canvas, menggambar bounding box, dan menampilkan teks label prediksi. |
-| **Controller** | `src/mvc/controller.ts` | Mengelola loop deteksi (`requestAnimationFrame`), throttling frame (100ms), manajemen mode, dan logika stable detection. |
-
-### Alur Kerja Data (Data Flow)
-`Webcam Stream` $\rightarrow$ `Controller` $\rightarrow$ `Model (Inference)` $\rightarrow$ `Controller (Stable Check)` $\rightarrow$ `View (Render Overlay)` $\rightarrow$ `UI (State Update)`
-
-> [!WARNING]
-> **Peringatan Struktur:** Terdapat file `controller.ts`, `model.ts`, dan `view.ts` di root folder `src/`. File-file tersebut adalah versi *legacy*. Implementasi terbaru yang aktif berada di dalam folder `src/mvc/`.
+### 🛠️ UI/UX Modern & Component-Based
+- **Modular React Architecture**: Menggunakan pendekatan *Functional Components* dan *Custom Hooks*.
+- **Real-time Canvas Overlay**: *Bounding box* yang bersih tergambar langsung mengikuti pergerakan benda.
+- **Tailwind CSS**: Antarmuka mode gelap (Dark Mode) yang memanjakan mata bergaya *glassmorphism*.
 
 ---
 
-## 🛠️ Tech Stack
+## 🏗️ Struktur Direktori & Penjelasan Kode
 
-### Core
-- **React 18**: UI Library.
-- **TypeScript**: Type-safe development.
-- **Vite**: Build tool & dev server ultra-cepat.
+Proyek ini telah direfaktor menggunakan arsitektur modern perpaduan antara **MVC (Model-View-Controller)** untuk pemrosesan AI dan **React Component-Based** untuk antarmuka pengguna. Berikut adalah rincian lengkap setiap folder dan file:
 
-### AI & ML
-- **TensorFlow.js**: ML runtime untuk browser.
-- **COCO-SSD**: Model deteksi objek.
-- **face-api.js**: Model deteksi wajah dan ekspresi.
+### 📂 Root Directory
+- **`App.tsx`**: Wadah utama (Container) aplikasi. File ini tidak memiliki logika state yang panjang; ia hanya bertugas menyusun layout halaman menggunakan komponen-komponen visual dari folder `components/`.
+- **`types.ts`**: Mendefinisikan kontrak TypeScript (Interfaces) seperti bentuk data objek `Prediction`.
+- **`vite.config.ts`**: Konfigurasi bundler Vite. Sudah termasuk plugin *basicSsl* untuk memaksa penggunaan protokol HTTPS di local server (syarat wajib untuk mengakses Webcam).
+- **`Importent-Documentation.MD`**: Catatan arsitektur dan peringatan modifikasi threshold model.
+- **`Update-Dataset.MD`**: Panduan *step-by-step* untuk mengupdate model YOLOv8 kustom Anda dari Google Colab.
 
-### Styling & Icons
-- **Tailwind CSS**: Utility-first CSS framework.
-- **Lucide React**: Set ikon minimalis.
+### 📂 `public/model/`
+Direktori ini berisi *weights* (otak) dari model YOLOv8 Kustom Anda yang telah dikonversi ke format TFJS (TensorFlow.js).
+- `model.json`: Struktur lapisan/grafik *neural network*.
+- `group1-shard*.bin`: Pecahan bobot angka biner (weights).
+- `metadata.yaml`: Daftar nama class objek yang dilatih (contoh: `laptop`, `bottle-cup`).
+
+### 📂 `src/hooks/`
+- **`useWebcamClassifier.ts`**: Jantung aplikasi React. *Custom hook* ini mengisolasi seluruh logika yang berat seperti: inisialisasi AI, siklus hidup React (`useEffect`), mengontrol tombol hidup/mati Webcam, mencatat objek dominan, hingga melacak waktu (timer) 3 detik untuk memunculkan `popupMessage`.
+
+### 📂 `src/components/` (User Interface)
+Setiap file di sini adalah fungsi UI spesifik:
+- **`Header.tsx`**: Menampilkan judul ICU dan memantau apakah model AI sudah selesai di-load.
+- **`WebcamScanner.tsx`**: Mengurus tag HTML `<video>` dan `<canvas>` yang berlapis, beserta tata letak tombol kontrol kamera.
+- **`PredictionList.tsx`**: Menerima array objek terdeteksi dan menggambarnya menjadi daftar (list) bar progres animasi di layar sisi kanan.
+
+### 📂 `src/mvc/` (AI Processing Logic)
+Memisahkan kerja berat kecerdasan buatan dari siklus UI React:
+- **`model.ts` (Model)**: Bertanggung jawab memuat `tf.GraphModel` (YOLO) dan `cocoSsd.ObjectDetection`. File ini menangani perhitungan Tensor, normalisasi piksel (0-255), algoritma IoU, penyaringan *overlapping bounding box*, hingga penerapan ambang batas *confidence* (contoh: > 65%).
+- **`view.ts` (View)**: Murni berinteraksi dengan DOM Canvas (`ctx.fillRect`, `ctx.strokeRect`) untuk menggambar kotak-kotak penanda di layar dengan rapi menyesuaikan posisi wajah/benda.
+- **`controller.ts` (Controller)**: Menjalankan "Engine Loop" menggunakan `requestAnimationFrame`. Menghubungkan aliran *frame* dari `video`, mempassing-nya ke `model` untuk dideteksi, dan memberikan hasilnya ke `view` untuk digambar, dengan jeda interval (throttling) demi menjaga kestabilan *frame rate* (FPS).
 
 ---
 
-## 📦 Panduan Instalasi & Penggunaan
+## 📦 Panduan Instalasi (Development)
 
 ### Prasyarat
 - Node.js $\ge$ 20.x
-- Docker & Docker Compose (Opsional)
 - Browser modern (Chrome/Edge/Firefox) dengan izin akses kamera.
 
-### Opsi 1: Menggunakan Docker (Sangat Direkomendasikan)
-Cara tercepat untuk menjalankan aplikasi tanpa konfigurasi lokal:
-
+### Cara Menjalankan
 ```bash
-# Masuk ke direktori project
-cd projects/webcam-classifier
-
-# Build dan jalankan container
-docker compose up -d --build
-```
-
-### Opsi 2: Instalasi Manual (Development)
-
-```bash
-# Install dependensi
+# 1. Install dependensi
 npm install
 
-# Jalankan server development
+# 2. Jalankan server development
 npm run dev
 ```
 
 ### 🌐 Mengakses Aplikasi
-Buka browser dan akses: **`https://localhost:5173`**
+Buka browser dan akses URL lokal Anda, biasanya: **`https://localhost:5173`**
 
 > [!IMPORTANT]
-> **WAJIB HTTPS:** Browser memblokir akses kamera (`getUserMedia`) pada koneksi HTTP biasa. Aplikasi ini sudah menyertakan `@vitejs/plugin-basic-ssl` untuk menyediakan sertifikat SSL lokal secara otomatis.
-
----
-
-## ⚙️ Konfigurasi Teknis
-
-### Pengaturan Server (`vite.config.ts`)
-Sertifikat SSL diaktifkan melalui plugin `basicSsl()` dan host diatur ke `0.0.0.0` agar dapat diakses dari luar container Docker.
-
-### Manajemen Memori & Performa
-- **Throttling**: Controller membatasi deteksi setiap 100ms untuk mencegah *memory leak* dan menjaga performa CPU/GPU.
-- **Model Loading**: Model dimuat secara asinkron dari CDN jsdelivr untuk memperkecil ukuran bundle awal.
+> **WAJIB HTTPS:** Browser memblokir akses kamera (`getUserMedia`) pada koneksi HTTP biasa. Aplikasi ini akan memperingatkan browser Anda dengan SSL lokal buatan, cukup klik "Advanced" dan "Proceed to localhost".
 
 ---
 
 ## 🔒 Privasi & Keamanan
-Aplikasi ini menjunjung tinggi privasi pengguna:
-1. **Local Processing**: Seluruh proses deteksi gambar dilakukan di dalam browser pengguna.
-2. **No Data Upload**: Tidak ada frame video atau data gambar yang dikirim ke server mana pun.
-3. **Transparent Access**: Izin kamera diminta secara eksplisit oleh browser.
+Aplikasi ICU sepenuhnya aman:
+1. **Local Processing**: Seluruh proses AI (pemotongan piksel, matriks matematika) terjadi 100% pada *hardware* browser (GPU/CPU lokal) Anda sendiri.
+2. **Tanpa Cloud Upload**: Tidak ada bingkai video gambar ruangan atau wajah Anda yang dikirim melalui internet.
 
 ## 📄 Lisensi
 Distributed under the MIT License.

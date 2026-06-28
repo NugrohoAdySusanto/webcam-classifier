@@ -6,6 +6,24 @@ const YOLO_CLASSES = [
   "bottle-cup", "laptop"
 ];
 
+function calculateIoU(box1: number[], box2: number[]): number {
+  const [x1, y1, w1, h1] = box1;
+  const [x2, y2, w2, h2] = box2;
+
+  const xA = Math.max(x1, x2);
+  const yA = Math.max(y1, y2);
+  const xB = Math.min(x1 + w1, x2 + w2);
+  const yB = Math.min(y1 + h1, y2 + h2);
+
+  const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+  if (interArea === 0) return 0;
+
+  const box1Area = w1 * h1;
+  const box2Area = w2 * h2;
+
+  return interArea / (box1Area + box2Area - interArea);
+}
+
 export class AIModel {
   private yoloModel: tf.GraphModel | null = null;
   private cocoSsdModel: cocoSsd.ObjectDetection | null = null;
@@ -67,7 +85,7 @@ export class AIModel {
           }
         }
 
-        if (maxScore > 0.5) { // Confidence threshold
+        if (maxScore > 0.65) { // Confidence threshold
           const cx = box[0];
           const cy = box[1];
           const w = box[2];
@@ -89,7 +107,7 @@ export class AIModel {
         const nmsBoxesTensor = tf.tensor2d(nmsBoxes, [nmsBoxes.length, 4]);
         const scoresTensor = tf.tensor1d(scores);
 
-        const indicesTensor = await tf.image.nonMaxSuppressionAsync(nmsBoxesTensor, scoresTensor, 20, 0.45, 0.5);
+        const indicesTensor = await tf.image.nonMaxSuppressionAsync(nmsBoxesTensor, scoresTensor, 20, 0.45, 0.65);
         const indices = await indicesTensor.array();
 
         indicesTensor.dispose();
@@ -124,10 +142,30 @@ export class AIModel {
       // COCO-SSD is very fast.
       const cocoPredictions = await this.cocoSsdModel.detect(videoElement);
 
-      // Filter out overlapping general classes that our YOLOv8 custom model handles better
-      const filteredCoco = cocoPredictions.filter(
-        p => !['laptop'].includes(p.class)
-      );
+      // Filter overlapping classes using IoU
+      const filteredCoco = cocoPredictions.filter(cocoP => {
+        // Drop COCO classes that we want YOLO to handle exclusively (if any)
+        if (['laptop', 'bottle', 'cup'].includes(cocoP.class)) return false;
+
+        // Check overlap with YOLO predictions
+        for (const yoloP of predictions) {
+          const iou = calculateIoU(cocoP.bbox, yoloP.bbox);
+          if (iou > 0.5) {
+            // Overlapping bounding boxes. Pick the one with the higher score.
+            if (cocoP.score <= yoloP.score) {
+              return false; // Drop COCO
+            } else {
+              // COCO is more confident. Remove YOLO from predictions array.
+              const index = predictions.indexOf(yoloP);
+              if (index > -1) {
+                predictions.splice(index, 1);
+              }
+              return true; // Keep COCO
+            }
+          }
+        }
+        return true;
+      });
 
       // Merge both predictions
       predictions = [...predictions, ...filteredCoco];
