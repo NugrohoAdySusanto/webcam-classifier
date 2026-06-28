@@ -1,47 +1,43 @@
-import * as faceapi from '@vladmandic/face-api';
-import type { Prediction, EmotionResult } from '../types';
+import type { Prediction } from '../types';
 
 export class View {
-  private video: HTMLVideoElement;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
-  constructor(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
-    this.video = video;
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
   }
 
-  draw(results: Prediction[], mode: 'OBJECT' | 'EMOTION', emotionData?: EmotionResult | null) {
+  draw(results: Prediction[]) {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    if (mode === 'OBJECT') {
-      this.drawObjects(results);
-    } else if (mode === 'EMOTION' && emotionData) {
-      this.drawEmotion(emotionData);
-    }
+    this.drawObjects(results);
   }
 
   private drawObjects(predictions: Prediction[]) {
+    this.ctx.font = '16px "Inter", sans-serif';
+    this.ctx.textBaseline = 'top';
+
     predictions.forEach(prediction => {
       const [x, y, width, height] = prediction.bbox;
-      this.ctx.strokeStyle = '#00FFFF';
-      this.ctx.lineWidth = 2;
+      const text = `${prediction.class} ${(prediction.score * 100).toFixed(1)}%`;
+      const textWidth = this.ctx.measureText(text).width;
+      const textHeight = 16;
+      
+      const textY = y > 20 ? y - 24 : 10;
+      
+      // Draw Bounding Box
+      this.ctx.strokeStyle = '#3b82f6'; // Tailwind blue-500
+      this.ctx.lineWidth = 3;
       this.ctx.strokeRect(x, y, width, height);
-      this.ctx.fillStyle = '#00FFFF';
-      this.ctx.fillText(`${prediction.class} (${(prediction.score * 100).toFixed(1)}%)`, x, y > 10 ? y - 5 : 10);
+      
+      // Draw Label Background
+      this.ctx.fillStyle = '#3b82f6';
+      this.ctx.fillRect(x, textY, textWidth + 8, textHeight + 8);
+      
+      // Draw Label Text
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.fillText(text, x + 4, textY + 4);
     });
-  }
-
-  private drawEmotion(emotionData: EmotionResult) {
-    const dims = faceapi.matchDimensions(this.canvas, this.video, true);
-    const resized = faceapi.resizeResults(emotionData.detection, dims);
-    faceapi.draw.drawDetections(this.canvas, resized);
-    
-    const text = `${emotionData.dominantEmotion} (${(emotionData.dominantScore * 100).toFixed(1)}%)`;
-    const { x, y } = resized.detection.box;
-    this.ctx.fillStyle = '#FF00FF';
-    this.ctx.font = '20px Arial';
-    this.ctx.fillText(text, x, y - 10);
   }
 }
